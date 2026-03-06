@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. Defined the strict list of allowed types
+enum PartOfSpeech {
+  noun
+  verb
+  adjective
+  adverb
+}
+
+model Word {
+  id        String   @id @default(uuid())
+  word      String   @unique
+  createdAt DateTime @default(now())
+
+  meanings  Meaning[]
+}
+
+model Meaning {
+  id                String       @id @default(uuid())
+  type              PartOfSpeech // 2. Applied the enum here
+  dictionaryMeaning String?
+  personalMeaning   String?
+
+  wordId            String
+  word              Word         @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  examples          Example[]
+}
+
+model Example {
+  id                String  @id @default(uuid())
+  dictionaryExample String?
+  personalExample   String?
+
+  meaningId         String
+  meaning           Meaning @relation(fields: [meaningId], references: [id], onDelete: Cascade)
+}
