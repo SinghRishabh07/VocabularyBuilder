@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "esm"
 }
 
 datasource db {
@@ -16,11 +17,12 @@ enum PartOfSpeech {
 }
 
 model Word {
-  id        String   @id @default(uuid())
-  word      String   @unique
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  word       String   @unique
+  createdAt  DateTime @default(now())
+  isFavorite Boolean @default(false)
 
-  meanings  Meaning[]
+  meanings   Meaning[]
 }
 
 model Meaning {
