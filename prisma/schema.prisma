@@ -23,6 +23,12 @@ model User {
   image     String?
   /// Target words to add per day (progress daily goal)
   dailyWordGoal Int     @default(5)
+  /// YYYY-MM-DD (UTC) when we last sent a “streak at risk” email (prevents duplicate sends)
+  streakRemindYmd String?
+  /// In-app: level up pending until user sees dismiss (null = no pending)
+  levelUpFrom  Int?
+  levelUpTo    Int?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

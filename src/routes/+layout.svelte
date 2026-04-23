@@ -9,14 +9,40 @@
         Trophy,
         Info,
         LogOut,
+        Bell,
     } from "@lucide/svelte";
-    import { goto } from "$app/navigation";
+    import { browser } from "$app/environment";
+    import { goto, invalidateAll } from "$app/navigation";
+    import { toast } from "svelte-sonner";
     import { page } from "$app/state";
     import type { PublicUser } from "$lib/types";
     import { dicebearAvatarUrl, imgReferrerPolicy } from "$lib/avatarUrl";
 
     let currentPath = $derived(page.url.pathname);
-	let { data, children } = $props<{ data: { user: PublicUser | null } }>();
+	let { data, children } = $props<{
+		data: {
+			user: PublicUser | null;
+			levelUp: { from: number; to: number } | null;
+		};
+	}>();
+
+	$effect(() => {
+		if (!browser) return;
+		const lu = data.levelUp;
+		if (!lu) return;
+		const k = `vocab-lu-seen-${lu.from}-${lu.to}`;
+		if (sessionStorage.getItem(k)) return;
+		sessionStorage.setItem(k, "1");
+		void toast.success("Level up!", {
+			description: `You’re now level ${lu.to} (was level ${lu.from}).`,
+		});
+		void fetch("/api/user/dismiss-level-up", { method: "POST" }).then((r) => {
+			if (r.ok) {
+				return void invalidateAll();
+			}
+			sessionStorage.removeItem(k);
+		});
+	});
 
     let user = $derived(data.user);
     let navAvatarSrc = $derived(
@@ -48,6 +74,11 @@
     }
     const handleProgressClick = () => {
         goto("/progress");
+    }
+    const handleNotificationsClick = () => {
+        toast.info("Notifications", {
+            description: "Inbox coming soon. You'll see reminders and progress updates here.",
+        });
     }
 </script>
 
@@ -112,8 +143,17 @@
             </button>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 sm:gap-3">
             {#if user}
+                <button
+                    type="button"
+                    onclick={handleNotificationsClick}
+                    class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+                    title="Notifications"
+                    aria-label="Open notifications (coming soon)"
+                >
+                    <Bell size={20} strokeWidth={2} />
+                </button>
                 <button
                     type="button"
                     onclick={handleProfileClick}

@@ -7,6 +7,7 @@ import {
 	SESSION_MAX_AGE_SEC,
 } from "$lib/server/auth";
 import { prisma } from "$lib/prisma";
+import { sendWelcomeEmail } from "$lib/server/email";
 import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
@@ -55,20 +56,36 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		throw redirect(302, "/?error=oauth_profile");
 	}
 
-	const user = await prisma.user.upsert({
+	const email = profile.email;
+	const name = profile.name ?? null;
+	const image = profile.picture ?? null;
+
+	const existing = await prisma.user.findUnique({
 		where: { googleId: profile.id },
-		create: {
-			googleId: profile.id,
-			email: profile.email,
-			name: profile.name ?? null,
-			image: profile.picture ?? null,
-		},
-		update: {
-			email: profile.email,
-			name: profile.name ?? null,
-			image: profile.picture ?? null,
-		},
 	});
+
+	let user: { id: string };
+	if (existing) {
+		user = await prisma.user.update({
+			where: { id: existing.id },
+			data: { email, name, image },
+			select: { id: true },
+		});
+	} else {
+		const created = await prisma.user.create({
+			data: {
+				googleId: profile.id,
+				email,
+				name,
+				image,
+			},
+			select: { id: true, email: true, name: true },
+		});
+		user = { id: created.id };
+		const displayName =
+			created.name?.trim() || created.email.split("@")[0] || "there";
+		sendWelcomeEmail({ email: created.email, displayName });
+	}
 
 	const token = await createSession(user.id);
 

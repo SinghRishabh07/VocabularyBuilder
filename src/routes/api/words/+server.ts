@@ -1,5 +1,6 @@
 import { prisma } from "$lib/prisma";
 import { json } from "@sveltejs/kit";
+import { getVocabularyLevelInfo } from "$lib/server/vocabularyLevel";
 import type { AddWordPayload } from "$lib/types";
 import type { RequestHandler } from "./$types";
 
@@ -27,6 +28,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const normalizedWord = wordText.toLowerCase().trim();
 
+		const totalBefore = await prisma.word.count({
+			where: { userId: locals.user.id },
+		});
+		const beforeLevel = getVocabularyLevelInfo(totalBefore);
+
 		const word = await prisma.word.create({
 			data: {
 				word: normalizedWord,
@@ -52,6 +58,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				},
 			},
 		});
+
+		const afterLevel = getVocabularyLevelInfo(totalBefore + 1);
+		if (afterLevel.level > beforeLevel.level) {
+			await prisma.user.update({
+				where: { id: locals.user.id },
+				data: {
+					levelUpFrom: beforeLevel.level,
+					levelUpTo: afterLevel.level,
+					streakRemindYmd: null,
+				},
+			});
+		} else {
+			// New word today: reset so the streak-risk cron can run again on a later day
+			// and no duplicate “nudge” is implied for a day the user has already been active
+			await prisma.user.update({
+				where: { id: locals.user.id },
+				data: { streakRemindYmd: null },
+			});
+		}
 
 		return json(word);
 	} catch (err: unknown) {

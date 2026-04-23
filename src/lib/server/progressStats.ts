@@ -10,6 +10,18 @@ export type WordForProgress = {
 
 export const POS_LIST: PartOfSpeechKey[] = [...POS];
 
+/** Shared helper for streak / cron: word rows → per-UTC-day counts. */
+export function countByDateFromCreatedRows(
+	rows: { createdAt: Date }[],
+): Map<string, number> {
+	const m = new Map<string, number>();
+	for (const { createdAt } of rows) {
+		const k = createdAt.toISOString().slice(0, 10);
+		m.set(k, (m.get(k) ?? 0) + 1);
+	}
+	return m;
+}
+
 function utcDateKey(d: Date): string {
 	return d.toISOString().slice(0, 10);
 }
