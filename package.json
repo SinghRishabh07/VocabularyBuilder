@@ -5,11 +5,10 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "svelte-kit sync && prisma generate && vite build",
 		"start": "node build",
 		"preview": "vite preview",
-		"postinstall": "prisma generate",
-		"prepare": "svelte-kit sync || echo ''",
+		"prepare": "svelte-kit sync && prisma generate",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
