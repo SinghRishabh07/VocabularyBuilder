@@ -7,13 +7,21 @@
         LayoutDashboard,
         Library,
         Trophy,
-        Info
+        Info,
+        LogOut,
     } from "@lucide/svelte";
     import { goto } from "$app/navigation";
     import { page } from "$app/state";
+    import type { PublicUser } from "$lib/types";
+    import { dicebearAvatarUrl, imgReferrerPolicy } from "$lib/avatarUrl";
 
     let currentPath = $derived(page.url.pathname);
-	let { children } = $props();
+	let { data, children } = $props<{ data: { user: PublicUser | null } }>();
+
+    let user = $derived(data.user);
+    let navAvatarSrc = $derived(
+        user ? (user.image?.trim() ? user.image : dicebearAvatarUrl(user.email)) : ""
+    );
 
     // --- FUNCTIONS --- Navigate to the vocabulary page
     const handleMyCollectionClick = async() => {
@@ -26,7 +34,7 @@
     // --- FUNCTIONS --- Get the button class based on the current path and change the CSS accordingly
     const getBtnClass = (path: string) => {
         const base = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer";
-        const active = "bg-rose-900/20 text-rose-400 border border-rose-900/30 shadow-inner";
+        const active = "bg-brand/15 text-brand border border-brand/30 shadow-inner";
         const inactive = "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 border border-transparent";
         
         return `${base} ${currentPath === path ? active : inactive}`;
@@ -34,6 +42,12 @@
 
     const handleAboutClick = () => {
         goto("/about");
+    }
+    const handleProfileClick = () => {
+        goto("/profile");
+    }
+    const handleProgressClick = () => {
+        goto("/progress");
     }
 </script>
 
@@ -56,16 +70,15 @@
     <title>VocabVault | Master Your Language</title>
 </svelte:head>
 
-<svelte>
 	<nav
         class="flex items-center justify-between px-6 py-4 bg-[#0d1120] border-b border-gray-800"
     >
         <div class="flex items-center gap-2 cursor-pointer">
-            <div class="p-1.5 bg-rose-900/30 text-rose-500 rounded-md">
+            <div class="p-1.5 bg-brand/20 text-brand rounded-md">
                 <BookOpen size={20} strokeWidth={2.5} />
             </div>
             <span class="text-xl font-bold tracking-tight text-white">
-                Vocab<span class="text-rose-500">Vault</span>
+                Vocab<span class="text-brand">Vault</span>
             </span>
         </div>
 
@@ -85,8 +98,8 @@
                 My Collection
             </button>
             <button
-                class="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 rounded-lg text-sm font-medium transition-colors"
-                title="Coming Soon -- Work in Progress"
+                class={getBtnClass("/progress")}
+                onclick={handleProgressClick}
             >
                 <Trophy size={18} />
                 Progress
@@ -99,16 +112,49 @@
             </button>
         </div>
 
-        <div>
-            <img
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=475569"
-                alt="User Avatar"
-                class="w-10 h-10 rounded-full border border-gray-700 cursor-pointer hover:border-gray-500 transition-colors"
-                title="Coming Soon-- Work in Progress"
-            />
+        <div class="flex items-center gap-3">
+            {#if user}
+                <button
+                    type="button"
+                    onclick={handleProfileClick}
+                    class="shrink-0 rounded-full border border-gray-700 bg-slate-800 overflow-hidden cursor-pointer p-0 leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+                    title="Profile"
+                >
+                    <img
+                        src={navAvatarSrc}
+                        alt=""
+                        width={40}
+                        height={40}
+                        referrerpolicy={imgReferrerPolicy}
+                        class="w-10 h-10 object-cover block"
+                        loading="eager"
+                        decoding="async"
+                    />
+                </button>
+                <form method="POST" action="/api/auth/logout">
+                    <button
+                        type="submit"
+                        class="flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-2 text-xs font-medium text-gray-300 hover:border-gray-500 hover:bg-gray-800/50 transition-colors cursor-pointer"
+                        title="Sign out"
+                    >
+                        <LogOut size={16} />
+                        <span class="hidden sm:inline">Sign out</span>
+                    </button>
+                </form>
+            {:else}
+                <img
+                    src={dicebearAvatarUrl("guest")}
+                    alt=""
+                    width={40}
+                    height={40}
+                    referrerpolicy={imgReferrerPolicy}
+                    class="w-10 h-10 rounded-full border border-gray-700 object-cover opacity-60 block bg-slate-800"
+                    loading="lazy"
+                    decoding="async"
+                />
+            {/if}
         </div>
     </nav>
-</svelte>
 
 {@render children()}
 

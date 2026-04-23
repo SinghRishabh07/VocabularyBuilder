@@ -64,7 +64,7 @@
 
                 <button
                     type="button"
-                    class="px-4 py-2 text-sm bg-rose-500 hover:bg-rose-400 text-white rounded-lg transition cursor-pointer"
+                    class="px-4 py-2 text-sm bg-brand-deep hover:bg-brand text-white rounded-lg transition cursor-pointer"
                     onclick={(e) => deleteWord(e, word.id)}
                 >
                     Delete

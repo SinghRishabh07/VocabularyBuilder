@@ -127,7 +127,7 @@
 </script>
 
 <div
-    class="min-h-screen bg-[#0d1120] text-gray-100 font-sans selection:bg-rose-900 selection:text-white"
+    class="min-h-screen bg-[#0d1120] text-gray-100 font-sans selection:bg-brand-darker/50 selection:text-white"
 >
     <main class="max-w-5xl mx-auto px-6 py-12 md:py-20">
         <div class="flex flex-col items-center text-center mb-16">
@@ -140,7 +140,7 @@
             </p>
 
             <div
-                class="w-full max-w-2xl flex items-center bg-[#151b30] border border-gray-700/60 rounded-xl overflow-hidden focus-within:border-rose-500/50 transition-colors shadow-lg shadow-black/20"
+                class="w-full max-w-2xl flex items-center bg-[#151b30] border border-gray-700/60 rounded-xl overflow-hidden focus-within:border-brand/50 transition-colors shadow-lg shadow-black/20"
             >
                 <div class="pl-4 text-gray-400">
                     <Search size={20} />
@@ -153,7 +153,7 @@
                     class="flex-1 bg-transparent border-none outline-none px-4 py-4 text-gray-200 placeholder-gray-500 w-full"
                 />
                 <button
-                    class="bg-[#94364e] hover:bg-[#7a2c40] text-white px-8 py-4 font-medium transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px]"
+                    class="bg-brand-deep hover:bg-brand-darker text-white px-8 py-4 font-medium transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px]"
                     onclick={handleSearch}
                     disabled={searchQuery.trim() === "" || isLoading}
                 >
@@ -184,7 +184,7 @@
 
             {#if searchResult && !error}
                 <div
-                    class="relative bg-[#151b30] border border-rose-500/30 rounded-xl p-6 md:p-8 shadow-lg shadow-black/20"
+                    class="relative bg-[#151b30] border border-brand/30 rounded-xl p-6 md:p-8 shadow-lg shadow-black/20"
                 >
                     <!-- Close Button -->
                     <button
@@ -218,7 +218,7 @@
                         {:else}
                             <button
                                 onclick={addToVocabulary}
-                                class="flex items-center w-fit bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg font-semibold transition-all hover:scale-[1.03] active:scale-95 shadow-md shadow-rose-900/30"
+                                class="flex items-center w-fit bg-brand-deep hover:bg-brand text-white px-4 py-2 rounded-lg font-semibold transition-all hover:scale-[1.03] active:scale-95 shadow-md shadow-brand/25"
                             >
                                 <Plus size={18} class="mr-2" />
                                 Add Word
@@ -233,7 +233,7 @@
                                 <!-- POS header -->
                                 <div class="flex items-center gap-3 mb-3">
                                     <span
-                                        class="bg-rose-500/10 text-rose-400 text-xs px-3 py-1 rounded-md font-semibold uppercase tracking-wide border border-rose-500/20"
+                                        class="bg-brand/10 text-brand text-xs px-3 py-1 rounded-md font-semibold uppercase tracking-wide border border-brand/20"
                                     >
                                         {meaning.pos}
                                     </span>

@@ -1,15 +1,20 @@
 import { prisma } from "$lib/prisma";
-// import type { RecentWord } from "$lib/types";
+import type { PageServerLoad } from "./$types";
 
-export const load = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+    if (!locals.user) {
+        return { recentWords: [] };
+    }
+
     const recentWords = await prisma.word.findMany({
-        take: 9, // Limit to 9 for a nice 3x3 grid
+        where: { userId: locals.user.id },
+        take: 9,
         orderBy: {
-            createdAt: 'desc' // Newest first
+            createdAt: "desc",
         },
         include: {
-            meanings: true
-        }
+            meanings: true,
+        },
     });
 
     return { recentWords };

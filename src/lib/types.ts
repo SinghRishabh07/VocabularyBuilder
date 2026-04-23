@@ -46,6 +46,43 @@ export interface AddWordPayload {
 //     message: string | null;
 // }
 
+/** Logged-in user exposed in layout data (safe for client) */
+export type PublicUser = {
+    id: string;
+    email: string;
+    name: string | null;
+    image: string | null;
+    /** ISO 8601 string */
+    createdAt: string;
+};
+
+/** Vocabulary level display (driven by word count) */
+export type VocabularyLevelInfo = {
+    level: number;
+    isMaxed: boolean;
+    progressInLevel: number;
+    wordsToNext: number;
+};
+
+export type ProfileStats = {
+    totalWords: number;
+    streakDays: number;
+    weeklyProgressPercent: number;
+    level: VocabularyLevelInfo;
+};
+
+/** Stacked bar bucket for progress charts (words by part of speech) */
+export type ProgressBarBucket = {
+    label: string;
+    periodStart: string;
+    periodEnd: string;
+    noun: number;
+    verb: number;
+    adjective: number;
+    adverb: number;
+    total: number;
+};
+
 export interface VocabularyWord {
     id: string;
     word: string;

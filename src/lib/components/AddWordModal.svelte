@@ -42,7 +42,7 @@
             
             <div class="p-6 border-b border-gray-800 flex justify-between items-center bg-[#1a213a] rounded-t-2xl">
                 <div>
-                    <h3 class="text-xl font-bold text-white text-rose-500">Customize Entry</h3>
+                    <h3 class="text-xl font-bold text-white text-brand">Customize Entry</h3>
                     <p class="text-gray-400 text-sm">Add personal notes to help you remember "{data.word}"</p>
                 </div>
                 <button onclick={() => show = false} class="text-gray-500 hover:text-white transition-colors">
@@ -59,7 +59,7 @@
                 {#each data.allMeanings as meaning, i}
                     <div class="space-y-4 p-4 bg-[#1e253d]/50 rounded-xl border border-gray-800">
                         <div class="flex items-center gap-2">
-                            <span class="bg-rose-500/20 text-rose-400 text-[10px] px-2 py-0.5 rounded font-bold uppercase">{meaning.pos}</span>
+                            <span class="bg-brand/20 text-brand text-[10px] px-2 py-0.5 rounded font-bold uppercase">{meaning.pos}</span>
                         </div>
 
                         <div class="space-y-3">
@@ -73,21 +73,21 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-gray-700/50">
                             <div>
-                                <label class="text-[10px] font-bold text-blue-400 uppercase block mb-1">Personal Mnemonic / Meaning</label>
+                                <label class="text-[10px] font-bold text-brand uppercase block mb-1">Personal Mnemonic / Meaning</label>
                                 <input 
                                     type="text" 
                                     bind:value={personalMeaning[i]} 
                                     placeholder="e.g. Sounds like..."
-                                    class="w-full bg-[#151b30] border border-gray-700 focus:border-blue-500 outline-none rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 transition-colors"
+                                    class="w-full bg-[#151b30] border border-gray-700 focus:border-brand outline-none rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 transition-colors"
                                 />
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-blue-400 uppercase block mb-1">Personal Example</label>
+                                <label class="text-[10px] font-bold text-brand uppercase block mb-1">Personal Example</label>
                                 <input 
                                     type="text" 
                                     bind:value={personalExample[i]} 
                                     placeholder="e.g. My boss is such a..."
-                                    class="w-full bg-[#151b30] border border-gray-700 focus:border-blue-500 outline-none rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 transition-colors"
+                                    class="w-full bg-[#151b30] border border-gray-700 focus:border-brand outline-none rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 transition-colors"
                                 />
                             </div>
                         </div>
@@ -101,7 +101,7 @@
                 </button>
                 <button 
                     onclick={handleSave}
-                    class="flex-1 px-4 py-3 rounded-xl font-bold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center gap-2 shadow-lg shadow-rose-900/20 transition-all active:scale-95"
+                    class="flex-1 px-4 py-3 rounded-xl font-bold bg-brand-deep hover:bg-brand text-white flex items-center justify-center gap-2 shadow-lg shadow-brand/20 transition-all active:scale-95"
                 >
                     <Save size={18} />
                     Save to Vocabulary

@@ -126,7 +126,7 @@
 }} />
 
 <div
-    class="min-h-screen bg-[#0a0e17] text-gray-100 font-sans p-8 selection:bg-blue-900"
+    class="min-h-screen bg-[#0a0e17] text-gray-100 font-sans p-8 selection:bg-brand-darker/40"
 >
     <div class="max-w-6xl mx-auto">
         <div class="mb-8">
@@ -183,7 +183,7 @@
                 <button
                     onclick={() => (showFavoritesOnly = !showFavoritesOnly)}
                     class="flex items-center gap-2 border rounded-lg px-4 py-2.5 text-sm transition-colors cursor-pointer {showFavoritesOnly
-                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                        ? 'bg-brand/10 border-brand/30 text-brand'
                         : 'bg-[#12182b] border-gray-800 hover:border-gray-600'}"
                 >
                     <Heart
@@ -202,7 +202,7 @@
                     onclick={() => (selectedLetter = letter)}
                     class="px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer {selectedLetter ===
                     letter
-                        ? 'bg-[#3b82f6] text-white'
+                        ? 'bg-brand text-white'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800'}"
                 >
                     {letter}
@@ -232,12 +232,12 @@
                     >
                         <button
                             onclick={(e) => toggleFavorite(e, item.id)}
-                            class="text-gray-400 hover:text-rose-500 transition-colors cursor-pointer"
+                            class="text-gray-400 hover:text-brand transition-colors cursor-pointer"
                         >
                             <Heart
                                 size={18}
                                 class={item.isFavorite
-                                    ? "fill-rose-500 text-rose-500"
+                                    ? "fill-brand text-brand"
                                     : ""}
                             />
                         </button>
@@ -265,7 +265,7 @@
                         {#if item.isFavorite}
                             <Heart
                                 size={14}
-                                class="fill-rose-500 text-rose-500"
+                                class="fill-brand text-brand"
                             />
                         {/if}
                     </div>

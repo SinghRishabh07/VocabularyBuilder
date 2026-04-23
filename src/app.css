@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+/* Brand accent — matches profile / UI purple (#c27aff) */
+@theme {
+	--color-brand: #c27aff;
+	--color-brand-bright: #d9b0ff;
+	--color-brand-deep: #9d4edd;
+	--color-brand-darker: #7b2cbf;
+}

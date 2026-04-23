@@ -1,8 +1,14 @@
 import { prisma } from "$lib/prisma";
 import type { VocabularyWord } from "$lib/types";
+import type { PageServerLoad } from "./$types";
 
-export const load = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+    if (!locals.user) {
+        return { data: [] satisfies VocabularyWord[] };
+    }
+
     const rows = await prisma.word.findMany({
+        where: { userId: locals.user.id },
         include: {
             meanings: {
                 include: {

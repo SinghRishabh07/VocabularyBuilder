@@ -8,7 +8,6 @@ datasource db {
   provider = "postgresql"
 }
 
-// 1. Defined the strict list of allowed types
 enum PartOfSpeech {
   noun
   verb
@@ -16,13 +15,44 @@ enum PartOfSpeech {
   adverb
 }
 
+model User {
+  id        String    @id @default(uuid())
+  googleId  String    @unique
+  email     String    @unique
+  name      String?
+  image     String?
+  /// Target words to add per day (progress daily goal)
+  dailyWordGoal Int     @default(5)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  sessions Session[]
+  words    Word[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
+
 model Word {
   id         String   @id @default(uuid())
-  word       String   @unique
+  word       String
   createdAt  DateTime @default(now())
-  isFavorite Boolean @default(false)
+  isFavorite Boolean  @default(false)
 
-  meanings   Meaning[]
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  meanings Meaning[]
+
+  @@unique([userId, word])
 }
 
 model Meaning {

@@ -1,9 +1,12 @@
 import { prisma } from "$lib/prisma";
 import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
 
-export async function PATCH(
-	{ params, request }: { params: { id: string }; request: Request }
-) {
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
+	if (!locals.user) {
+		return json({ error: "Unauthorized" }, { status: 401 });
+	}
+
 	const id = params.id;
 	if (!id) {
 		return json({ error: "Word ID required" }, { status: 400 });
@@ -17,39 +20,45 @@ export async function PATCH(
 			return json({ error: "isFavorite (boolean) required" }, { status: 400 });
 		}
 
-		const word = await prisma.word.update({
-			where: { id },
+		const word = await prisma.word.updateMany({
+			where: { id, userId: locals.user.id },
 			data: { isFavorite },
 		});
 
-		return json(word);
-	} catch (err: unknown) {
-		const e = err as { code?: string };
-		if (e?.code === "P2025") {
+		if (word.count === 0) {
 			return json({ error: "Word not found" }, { status: 404 });
 		}
+
+		const updated = await prisma.word.findUnique({ where: { id } });
+		return json(updated);
+	} catch (err: unknown) {
 		console.error("PATCH /api/words/[id]:", err);
 		return json({ error: "Failed to update word" }, { status: 500 });
 	}
-}
+};
 
-export async function DELETE({ params }: { params: { id: string } }) {
+export const DELETE: RequestHandler = async ({ params, locals }) => {
+	if (!locals.user) {
+		return json({ error: "Unauthorized" }, { status: 401 });
+	}
+
 	const id = params.id;
 	if (!id) {
 		return json({ error: "Word ID required" }, { status: 400 });
 	}
 
 	try {
-		await prisma.word.delete({
-			where: { id },
+		const result = await prisma.word.deleteMany({
+			where: { id, userId: locals.user.id },
 		});
-		return new Response(null, { status: 204 });
-	} catch (err: unknown) {
-		const e = err as { code?: string };
-		if (e?.code === "P2025") {
+
+		if (result.count === 0) {
 			return json({ error: "Word not found" }, { status: 404 });
 		}
+
+		return new Response(null, { status: 204 });
+	} catch (err: unknown) {
 		console.error("DELETE /api/words/[id]:", err);
 		return json({ error: "Failed to delete word" }, { status: 500 });
 	}
-}
+};

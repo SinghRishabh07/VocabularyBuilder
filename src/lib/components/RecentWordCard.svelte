@@ -24,7 +24,7 @@
 
     <div class="flex-grow">
         <div class="flex gap-2 text-gray-400 italic mb-4">
-            <Quote size={14} class="shrink-0 mt-1 text-rose-500/50" />
+            <Quote size={14} class="shrink-0 mt-1 text-brand/50" />
             <p class="text-sm leading-relaxed line-clamp-3">
                 {meaning}
             </p>
@@ -32,7 +32,7 @@
     </div>
 
     <div class="pt-4 border-t border-gray-800/50 flex items-center text-[11px] font-medium text-gray-500 uppercase tracking-widest">
-        <Calendar size={12} class="mr-2 text-rose-500/70" />
+        <Calendar size={12} class="mr-2 text-brand/70" />
         {formattedDate}
     </div>
 </div>

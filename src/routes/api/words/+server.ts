@@ -1,6 +1,7 @@
 import { prisma } from "$lib/prisma";
 import { json } from "@sveltejs/kit";
 import type { AddWordPayload } from "$lib/types";
+import type { RequestHandler } from "./$types";
 
 const VALID_POS = ["noun", "verb", "adjective", "adverb"] as const;
 
@@ -11,7 +12,11 @@ function toPartOfSpeech(pos: string): "noun" | "verb" | "adjective" | "adverb" {
 		: "noun";
 }
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!locals.user) {
+		return json({ error: "Unauthorized" }, { status: 401 });
+	}
+
 	try {
 		const body = (await request.json()) as AddWordPayload;
 		const { word: wordText, meanings } = body;
@@ -20,9 +25,12 @@ export async function POST({ request }) {
 			return json({ error: "word and meanings are required" }, { status: 400 });
 		}
 
+		const normalizedWord = wordText.toLowerCase().trim();
+
 		const word = await prisma.word.create({
 			data: {
-				word: wordText.toLowerCase().trim(),
+				word: normalizedWord,
+				userId: locals.user.id,
 				meanings: {
 					create: meanings.map((m: AddWordPayload["meanings"][number]) => ({
 						type: toPartOfSpeech(m.pos ?? ""),
@@ -31,26 +39,27 @@ export async function POST({ request }) {
 						examples: {
 							create: m.personalExample
 								? [{ personalExample: m.personalExample, dictionaryExample: null }]
-								: []
-						}
-					}))
-				}
+								: [],
+						},
+					})),
+				},
 			},
 			include: {
 				meanings: {
 					include: {
-						examples: true
-					}
-				}
-			}
+						examples: true,
+					},
+				},
+			},
 		});
 
 		return json(word);
-	} catch (err: any) {
-		if (err?.code === "P2002") {
+	} catch (err: unknown) {
+		const anyErr = err as { code?: string };
+		if (anyErr?.code === "P2002") {
 			return json({ error: "Word already exists in vocabulary" }, { status: 409 });
 		}
 		console.error("POST /api/words:", err);
 		return json({ error: "Failed to save word" }, { status: 500 });
 	}
-}
+};

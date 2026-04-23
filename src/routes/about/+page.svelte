@@ -27,7 +27,7 @@
     <main class="max-w-4xl mx-auto px-6 py-14">
         <!-- Header -->
         <div class="mb-14">
-            <p class="text-xs tracking-widest text-blue-400 font-semibold mb-4">
+            <p class="text-xs tracking-widest text-brand font-semibold mb-4">
                 ABOUT THE PROJECT
             </p>
 
@@ -87,7 +87,7 @@
                 <ul class="space-y-6">
                     <li class="flex gap-4">
                         <div
-                            class="w-2 h-2 mt-2 rounded-full bg-blue-400"
+                            class="w-2 h-2 mt-2 rounded-full bg-brand"
                         ></div>
                         <div>
                             <p class="font-semibold text-gray-200">
@@ -101,7 +101,7 @@
 
                     <li class="flex gap-4">
                         <div
-                            class="w-2 h-2 mt-2 rounded-full bg-blue-400"
+                            class="w-2 h-2 mt-2 rounded-full bg-brand"
                         ></div>
                         <div>
                             <p class="font-semibold text-gray-200">
@@ -116,7 +116,7 @@
 
                     <li class="flex gap-4">
                         <div
-                            class="w-2 h-2 mt-2 rounded-full bg-blue-400"
+                            class="w-2 h-2 mt-2 rounded-full bg-brand"
                         ></div>
                         <div>
                             <p class="font-semibold text-gray-200">
@@ -158,13 +158,13 @@
             
                         <div class="flex flex-col gap-1">
                             <a href="mailto:rishabh.work.dev07@gmail.com"
-                               class="text-blue-400 hover:text-blue-300 underline underline-offset-4">
+                               class="text-brand hover:text-brand-bright underline underline-offset-4">
                                 rishabh.work.dev07@gmail.com
                             </a>
             
                             <a href="https://github.com/SinghRishabh07/VocabularyBuilder"
                                target="_blank"
-                               class="text-blue-400 hover:text-blue-300 underline underline-offset-4">
+                               class="text-brand hover:text-brand-bright underline underline-offset-4">
                                 https://github.com/SinghRishabh07
                             </a>
                         </div>
@@ -176,7 +176,7 @@
             
                         <a href="https://github.com/SinghRishabh07/VocabularyBuilder"
                            target="_blank"
-                           class="text-blue-400 hover:text-blue-300 underline underline-offset-4">
+                           class="text-brand hover:text-brand-bright underline underline-offset-4">
                             https://github.com/SinghRishabh07/VocabularyBuilder
                         </a>
                     </div>
@@ -210,7 +210,7 @@
 
         <!-- CTA -->
         <section
-            class="border border-blue-900/40 bg-[#020b1f] rounded-xl p-10 text-center mb-16"
+            class="border border-brand/25 bg-[#020b1f] rounded-xl p-10 text-center mb-16"
         >
             <h3 class="text-xl font-semibold text-gray-100 mb-2">
                 Ready to start your vocabulary journey?
@@ -223,7 +223,7 @@
 
             <a
                 href="/"
-                class="inline-block bg-blue-500 hover:bg-blue-400 text-white
+                class="inline-block bg-brand hover:bg-brand-deep text-white
                        px-6 py-3 rounded-lg font-semibold transition"
             >
                 Get Started
