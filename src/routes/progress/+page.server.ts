@@ -1,4 +1,5 @@
 import { prisma } from "$lib/prisma";
+import { getVocabularyLevelInfo } from "$lib/server/vocabularyLevel";
 import {
 	buildDateIndex,
 	buildHeatmapGrid,
@@ -8,9 +9,26 @@ import {
 	weeklyBarSeries,
 	monthlyBarSeries,
 	yearlyBarSeries,
+	totalsByPrimaryPos,
 	type WordForProgress,
 } from "$lib/server/progressStats";
 import type { PageServerLoad } from "./$types";
+
+function startUtcDay(d: Date): Date {
+	const x = new Date(d);
+	x.setUTCHours(0, 0, 0, 0);
+	return x;
+}
+
+function addUtcDays(d: Date, n: number): Date {
+	const x = new Date(d);
+	x.setUTCDate(x.getUTCDate() + n);
+	return x;
+}
+
+function utcKey(d: Date): string {
+	return d.toISOString().slice(0, 10);
+}
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) {
@@ -45,6 +63,29 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const totalWords = wfp.length;
 	const activeDays = countByDate.size;
 	const now = new Date();
+	const endDay = startUtcDay(now);
+
+	let weeklyWordsAdded = 0;
+	const weekStart = addUtcDays(endDay, -6);
+	for (let d = new Date(weekStart); d <= endDay; d = addUtcDays(d, 1)) {
+		weeklyWordsAdded += countByDate.get(utcKey(d)) ?? 0;
+	}
+	const goal = Math.max(1, user.dailyWordGoal);
+	const weeklyTarget = 7 * goal;
+	const weeklyProgressPercent = Math.min(
+		100,
+		Math.round((weeklyWordsAdded / weeklyTarget) * 100),
+	);
+
+	let activeDays28 = 0;
+	for (let i = 0; i < 28; i++) {
+		const d = addUtcDays(endDay, -i);
+		if ((countByDate.get(utcKey(d)) ?? 0) > 0) activeDays28++;
+	}
+	const consistencyRate = Math.round((activeDays28 / 28) * 100);
+
+	const level = getVocabularyLevelInfo(totalWords);
+	const posTotals = totalsByPrimaryPos(wfp);
 
 	const barWeekly = weeklyBarSeries(countByDate, byDateCategory, now);
 	const barMonthly = monthlyBarSeries(countByDate, byDateCategory, now);
@@ -60,6 +101,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 		activeDays,
 		todayWords,
 		dailyWordGoal: user.dailyWordGoal,
+		weeklyWordsAdded,
+		weeklyTarget,
+		weeklyProgressPercent,
+		consistencyRate,
+		level,
+		posTotals,
 		barWeekly,
 		barMonthly,
 		barYearly,

@@ -69,6 +69,12 @@ export type ProfileStats = {
     streakDays: number;
     weeklyProgressPercent: number;
     level: VocabularyLevelInfo;
+    /** Words added in the last 7 days */
+    weeklyWordsAdded: number;
+    /** dailyWordGoal × 7 */
+    weeklyTarget: number;
+    dailyWordGoal: number;
+    favoriteWords: number;
 };
 
 /** Stacked bar bucket for progress charts (words by part of speech) */
@@ -88,10 +94,12 @@ export interface VocabularyWord {
     word: string;
     createdAt: Date;
     meanings: {
+        id: string;
         dictionaryMeaning: string;
         type: "noun" | "verb" | "adjective" | "adverb";
         personalMeaning: string | null;
         examples: {
+            id: string;
             dictionaryExample: string | null;
             personalExample: string | null;
         }[];

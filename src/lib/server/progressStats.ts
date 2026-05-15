@@ -48,6 +48,15 @@ function primaryPos(w: WordForProgress): PartOfSpeechKey {
 	return [...w.meanings].sort((a, b) => a.id.localeCompare(b.id))[0]!.type;
 }
 
+/** Word counts by each word's primary (first by id) part of speech. */
+export function totalsByPrimaryPos(words: WordForProgress[]): Record<PartOfSpeechKey, number> {
+	const acc = emptyCats();
+	for (const w of words) {
+		acc[primaryPos(w)]++;
+	}
+	return acc;
+}
+
 export function buildDateIndex(words: WordForProgress[]) {
 	const countByDate = new Map<string, number>();
 	const byDateCategory = new Map<string, Partial<Record<PartOfSpeechKey, number>>>();

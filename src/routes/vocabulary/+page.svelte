@@ -4,13 +4,15 @@
         Heart,
         Trash2,
         X,
-        SlidersHorizontal,
-        Check,
+        Pencil,
+        ChevronRight,
     } from "@lucide/svelte";
     import { invalidateAll } from "$app/navigation";
     import type { VocabularyWord } from "$lib/types";
     import { toast } from "svelte-sonner";
     import DeleteModal from "$lib/components/DeleteModal.svelte";
+    import EditWordModal from "$lib/components/EditWordModal.svelte";
+    import { splitPersonalNote } from "$lib/personalNoteSplit";
 
     let { data } = $props<{ data: { data: VocabularyWord[] } }>();
     let words = $state<VocabularyWord[]>([]);
@@ -19,32 +21,28 @@
         words = data?.data ?? [];
     });
 
-    // --- STATE --- Crearting reactive state variable to reflect in the UI when changing the filter
     let searchQuery = $state("");
     let selectedLetter = $state("All");
     let showFavoritesOnly = $state(false);
-    let selectedWord = $state<any>(null); // For the modal
+    let selectedWord = $state<VocabularyWord | null>(null);
+    let wordToEdit = $state<VocabularyWord | null>(null);
     let deleteModalOpen = $state(false);
-    let wordDetailModalOpen = $state(false);
-    let open = $state(false); // For the filter dropdown
-    const options = [
-        { label: "A → Z", value: "az" },
-        { label: "Z → A", value: "za" },
-        { label: "Newest first", value: "new" },
-        { label: "Oldest first", value: "old" },
-    ];
+    let wordDetailOpen = $state(false);
+    let editModalOpen = $state(false);
 
-    let selected = $state<{ label: string; value: string }>(options[2]);
+    const sortOptions = [
+        { label: "Newest", value: "new" },
+        { label: "Oldest", value: "old" },
+        { label: "A–Z", value: "az" },
+        { label: "Z–A", value: "za" },
+    ] as const;
 
-    function select(option: { label: string; value: string }) {
-        selected = option;
-        open = false;
-    }
+    let sortValue = $state<(typeof sortOptions)[number]["value"]>("new");
 
     const alphabet = ["All", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
 
     let filteredWords = $derived.by(() => {
-        let result = words?.filter((w: VocabularyWord) => {
+        const result = words?.filter((w: VocabularyWord) => {
             const matchesSearch = w.word
                 .toLowerCase()
                 .includes(searchQuery.toLowerCase());
@@ -54,34 +52,53 @@
             const matchesFavorite = showFavoritesOnly ? w.isFavorite : true;
             return matchesSearch && matchesLetter && matchesFavorite;
         });
-        return result.sort((a, b) => handleFilterChange(selected.value, a, b));
+        return result.sort((a, b) => sortCompare(sortValue, a, b));
     });
 
-    // --- FUNCTIONS --- Filter the words based on the selected option
-    function handleFilterChange(
-        sortValue: string,
+    function sortCompare(
+        sortVal: string,
         a: VocabularyWord,
         b: VocabularyWord,
     ) {
-        if (sortValue === "new") {
+        if (sortVal === "new") {
             return b.createdAt.getTime() - a.createdAt.getTime();
-        } else if (sortValue === "old") {
+        }
+        if (sortVal === "old") {
             return a.createdAt.getTime() - b.createdAt.getTime();
-        } else if (sortValue === "az") {
+        }
+        if (sortVal === "az") {
             return a.word.toLowerCase().localeCompare(b.word.toLowerCase());
-        } else if (sortValue === "za") {
+        }
+        if (sortVal === "za") {
             return b.word.toLowerCase().localeCompare(a.word.toLowerCase());
         }
-
         return 0;
     }
 
-    // --- FUNCTIONS --- Toggle the favorite status of a word
-    const toggleFavorite = async (e: Event, id: string) => {
+    function formatRowDate(d: Date) {
+        return new Intl.DateTimeFormat(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        }).format(d);
+    }
+
+    function openDetail(e: Event, item: VocabularyWord) {
         e.stopPropagation();
-        const word = words.find((w) => w.id === id);
-        if (!word) return;
-        const nextFavorite = !word.isFavorite;
+        selectedWord = item;
+        wordDetailOpen = true;
+    }
+
+    function closeDetail() {
+        wordDetailOpen = false;
+        selectedWord = null;
+    }
+
+    const toggleFavorite = async (e: Event | undefined, id: string) => {
+        e?.stopPropagation();
+        const entry = words.find((w) => w.id === id);
+        if (!entry) return;
+        const nextFavorite = !entry.isFavorite;
         words = words.map((w) =>
             w.id === id ? { ...w, isFavorite: nextFavorite } : w,
         );
@@ -92,321 +109,400 @@
                 body: JSON.stringify({ isFavorite: nextFavorite }),
             });
             if (!res.ok) throw new Error("Failed to update");
+            if (selectedWord?.id === id) {
+                selectedWord = { ...selectedWord, isFavorite: nextFavorite };
+            }
             if (nextFavorite) {
-                toast.success("Word marked as favorite! 💖");
+                toast.success("Saved to favorites");
             } else {
-                toast.success("Word removed from favorites. 💔");
+                toast.success("Removed from favorites");
             }
             await invalidateAll();
         } catch (err) {
-            console.error("Failed to mark as favorite. Please try again.", err);
-            toast.error("Failed to mark as favorite. Please try again.");
+            console.error(err);
+            toast.error("Could not update favorite");
+            words = words.map((w) =>
+                w.id === id ? { ...w, isFavorite: entry.isFavorite } : w,
+            );
         }
     };
 
-    const handleWordDetailModalOpen = (e: Event, item: VocabularyWord) => {
+    function handleEditOpen(e: Event, item: VocabularyWord) {
         e.stopPropagation();
-        selectedWord = item;
-        wordDetailModalOpen = true;
-    };
+        wordDetailOpen = false;
+        wordToEdit = item;
+        selectedWord = null;
+        editModalOpen = true;
+    }
 
-    const handleDeleteModalOpen = (e: Event, item: VocabularyWord) => {
+    function handleDeleteModalOpen(e: Event, item: VocabularyWord) {
         e.stopPropagation();
         selectedWord = item;
         deleteModalOpen = true;
-    };
+    }
+
+    function openDeleteFromSheet(e: Event) {
+        e.stopPropagation();
+        if (!selectedWord) return;
+        deleteModalOpen = true;
+        wordDetailOpen = false;
+    }
+
+    function chipClass(active: boolean) {
+        return active
+            ? "border-brand/40 bg-brand/12 text-brand"
+            : "border-white/[0.08] bg-white/[0.04] text-gray-400 hover:bg-white/[0.06] hover:text-gray-300";
+    }
+
+    function onSearchSubmit(ev: Event) {
+        ev.preventDefault();
+        (ev.target as HTMLFormElement).querySelector("input")?.blur();
+    }
+
+    function onGlobalKeydown(e: KeyboardEvent) {
+        if (e.key !== "Escape") return;
+        if (editModalOpen) return;
+        if (deleteModalOpen) return;
+        if (wordDetailOpen) closeDetail();
+    }
 </script>
 
-<svelte:window onclick={() => {
-    console.log("Close modal from window");
-    open = false;
-    wordDetailModalOpen = false;
-    deleteModalOpen = false;
-    selectedWord = null;
-}} />
+<svelte:window onkeydown={onGlobalKeydown} />
 
 <div
-    class="min-h-screen bg-[#0a0e17] text-gray-100 font-sans p-8 selection:bg-brand-darker/40"
+    class="min-h-full bg-[var(--surface-0)] font-sans text-gray-100 selection:bg-brand-darker/40"
 >
-    <div class="max-w-6xl mx-auto">
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-white mb-1">My Vocabulary</h1>
-            <p class="text-gray-400 text-sm">{filteredWords.length} words</p>
+    <main
+        class="mx-auto max-w-xl px-4 pt-3 pb-6 lg:max-w-4xl lg:px-6 lg:pt-5 lg:pb-10"
+    >
+        <div class="mb-3">
+            <h1
+                class="text-[1.375rem] font-semibold tracking-tight text-white sm:text-[1.625rem]"
+            >
+                My Vocabulary
+            </h1>
+            <p class="mt-0.5 text-[12px] leading-snug text-gray-500">
+                {#if filteredWords.length !== words.length}
+                    {filteredWords.length} matching · {words.length}
+                    {words.length === 1 ? "word" : "words"} saved
+                {:else}
+                    {words.length}
+                    {words.length === 1 ? "word" : "words"} saved
+                {/if}
+            </p>
         </div>
 
-        <!-- Search and filter -->
-        <div class="flex flex-col md:flex-row gap-4 mb-6">
-            <div class="flex-1 relative">
+        <form class="mt-3" onsubmit={onSearchSubmit}>
+            <label class="sr-only" for="vocab-search">Search vocabulary</label>
+            <div
+                class="flex items-center rounded-2xl border border-white/[0.08] bg-[var(--surface-1)] px-3 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] transition-[border-color,box-shadow] duration-200 focus-within:border-brand/40 focus-within:ring-1 focus-within:ring-brand/25"
+            >
                 <Search
                     size={18}
-                    class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                    class="shrink-0 text-gray-500"
+                    strokeWidth={2}
+                    aria-hidden="true"
                 />
                 <input
-                    type="text"
+                    id="vocab-search"
+                    type="search"
+                    autocomplete="off"
+                    autocorrect="off"
+                    spellcheck={false}
+                    enterkeyhint="search"
                     bind:value={searchQuery}
-                    placeholder="Search words..."
-                    class="w-full bg-[#12182b] border border-gray-800 rounded-lg pl-11 pr-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors"
+                    placeholder="Search…"
+                    class="min-h-11 w-full flex-1 bg-transparent px-2.5 py-2.5 text-[15px] text-gray-100 outline-none placeholder:text-gray-600"
                 />
             </div>
+        </form>
 
-            <div class="flex gap-3">
+        <!-- Sort + favorites chips -->
+        <div
+            class="mt-3 flex flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+            {#each sortOptions as opt}
                 <button
-                    class="flex items-center gap-2 bg-[#12182b] border border-gray-800 hover:border-gray-600 rounded-lg px-4 py-2.5 text-sm transition-colors cursor-pointer"
-                    onclick={(e) => {
-                        e.stopPropagation();
-                        open = !open;
-                    }}
+                    type="button"
+                    onclick={() => (sortValue = opt.value)}
+                    class="shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors duration-150 active:scale-[0.98] touch-manipulation {chipClass(
+                        sortValue === opt.value,
+                    )}"
                 >
-                    <SlidersHorizontal size={16} class="text-gray-400" />
-                    <span>{selected.label}</span>
+                    {opt.label}
                 </button>
+            {/each}
+            <button
+                type="button"
+                onclick={() => (showFavoritesOnly = !showFavoritesOnly)}
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors duration-150 active:scale-[0.98] touch-manipulation {chipClass(
+                    showFavoritesOnly,
+                )}"
+            >
+                <Heart
+                    size={13}
+                    strokeWidth={2}
+                    class={showFavoritesOnly ? "fill-brand text-brand" : ""}
+                    aria-hidden="true"
+                />
+                Favorites
+            </button>
+        </div>
 
-                {#if open}
-                    <!-- Dropdown -->
-                    <div
-                        class="absolute mt-2 w-44 bg-[#0f1423] border border-gray-800 rounded-lg shadow-lg overflow-hidden z-50"
+        <!-- Alphabet: horizontal scroll -->
+        <div
+            class="mt-3 -mx-1 border-b border-white/[0.04] pb-2.5"
+            aria-label="Filter by first letter"
+        >
+            <div
+                class="flex gap-1 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+                {#each alphabet as letter}
+                    <button
+                        type="button"
+                        onclick={() => (selectedLetter = letter)}
+                        class="min-h-9 min-w-9 shrink-0 rounded-lg text-[13px] font-semibold transition-colors duration-150 active:scale-95 touch-manipulation {selectedLetter ===
+                        letter
+                            ? 'bg-brand text-white'
+                            : 'text-gray-500 hover:bg-white/[0.06] hover:text-gray-300'}"
                     >
-                        {#each options as option}
-                            <button
-                                class="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-300 hover:bg-[#12182b]"
-                                onclick={() => select(option)}
-                            >
-                                <span>{option.label}</span>
+                        {letter}
+                    </button>
+                {/each}
+            </div>
+        </div>
 
-                                {#if selected.value === option.value}
-                                    <Check size={16} class="text-gray-400" />
+        <!-- List -->
+        <ul class="mt-2 space-y-1.5" role="list">
+            {#each filteredWords ?? [] as item (item.id)}
+                <li>
+                    <button
+                        type="button"
+                        onclick={(e) => openDetail(e, item)}
+                        class="group flex w-full min-h-[3.25rem] items-center justify-between gap-3 rounded-xl border border-white/[0.05] bg-white/[0.03] px-3 py-2.5 text-left transition-colors duration-150 hover:bg-white/[0.055] active:bg-white/[0.07] touch-manipulation"
+                    >
+                        <div class="min-w-0 flex-1">
+                            <div
+                                class="flex items-center gap-2"
+                            >
+                                <span
+                                    class="truncate text-[15px] font-semibold capitalize tracking-tight text-gray-100"
+                                    >{item.word}</span
+                                >
+                                {#if item.isFavorite}
+                                    <Heart
+                                        size={12}
+                                        class="shrink-0 fill-brand text-brand"
+                                        aria-label="Favorite"
+                                    />
                                 {/if}
-                            </button>
-                        {/each}
-                    </div>
-                {/if}
+                            </div>
+                            <p class="mt-0.5 text-[12px] tabular-nums text-gray-500">
+                                {formatRowDate(item.createdAt)}
+                            </p>
+                        </div>
+                        <ChevronRight
+                            size={18}
+                            class="shrink-0 text-gray-600 transition group-hover:text-gray-500"
+                            aria-hidden="true"
+                        />
+                    </button>
+                </li>
+            {/each}
+        </ul>
+
+        {#if filteredWords?.length === 0}
+            <p
+                class="mt-10 rounded-xl border border-dashed border-white/[0.08] px-4 py-10 text-center text-[14px] text-gray-500"
+            >
+                No words match. Try another search or filter.
+            </p>
+        {/if}
+    </main>
+</div>
+
+<DeleteModal bind:open={deleteModalOpen} bind:word={selectedWord} />
+
+<EditWordModal
+    bind:open={editModalOpen}
+    bind:word={wordToEdit}
+    onSaved={async () => {
+        await invalidateAll();
+        toast.success("Changes saved");
+    }}
+/>
+
+{#if wordDetailOpen && selectedWord}
+    {@const sw = selectedWord}
+    <div
+        class="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vocab-detail-title"
+    >
+        <button
+            type="button"
+            class="animate-backdrop-in absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+            aria-label="Close"
+            onclick={closeDetail}
+        ></button>
+
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <div
+            role="document"
+            tabindex="-1"
+            class="animate-sheet-enter relative flex max-h-[min(88dvh,640px)] w-full max-w-lg flex-col rounded-t-2xl border border-white/[0.08] bg-[var(--surface-1)] shadow-[0_-12px_40px_rgba(0,0,0,0.45)] sm:max-h-[min(85dvh,560px)] sm:rounded-2xl sm:shadow-2xl"
+            onclick={(e) => e.stopPropagation()}
+            onkeydown={(e) => e.stopPropagation()}
+        >
+            <div class="mx-auto mt-2 mb-1 h-1 w-9 shrink-0 rounded-full bg-white/15 sm:hidden" aria-hidden="true"></div>
+
+            <div
+                class="flex shrink-0 items-start justify-between gap-3 border-b border-white/[0.06] px-4 pb-3 pt-1 sm:px-5 sm:pt-4"
+            >
+                <div class="min-w-0">
+                    <h2
+                        id="vocab-detail-title"
+                        class="text-xl font-semibold capitalize tracking-tight text-white sm:text-[1.375rem]"
+                    >
+                        {sw.word}
+                    </h2>
+                    <p class="mt-0.5 text-[12px] text-gray-500">
+                        Added {formatRowDate(sw.createdAt)}
+                    </p>
+                </div>
                 <button
-                    onclick={() => (showFavoritesOnly = !showFavoritesOnly)}
-                    class="flex items-center gap-2 border rounded-lg px-4 py-2.5 text-sm transition-colors cursor-pointer {showFavoritesOnly
-                        ? 'bg-brand/10 border-brand/30 text-brand'
-                        : 'bg-[#12182b] border-gray-800 hover:border-gray-600'}"
+                    type="button"
+                    onclick={closeDetail}
+                    class="rounded-lg p-2 text-gray-500 transition hover:bg-white/[0.06] hover:text-gray-200"
+                    aria-label="Close"
+                >
+                    <X size={20} strokeWidth={2} />
+                </button>
+            </div>
+
+            <!-- Quick actions -->
+            <div
+                class="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/[0.06] px-4 py-2.5 sm:px-5"
+            >
+                <button
+                    type="button"
+                    onclick={(e) => void toggleFavorite(e, sw.id)}
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-3 py-2 text-[13px] font-medium text-gray-300 transition hover:border-brand/25 hover:bg-brand/10 hover:text-brand touch-manipulation"
                 >
                     <Heart
                         size={16}
-                        class={showFavoritesOnly ? "fill-current" : ""}
+                        class={sw.isFavorite
+                            ? "fill-brand text-brand"
+                            : ""}
                     />
-                    <span>Favorites</span>
+                    {sw.isFavorite ? "Favorited" : "Favorite"}
                 </button>
-            </div>
-        </div>
-
-        <!-- Alphabet filter -->
-        <div class="flex flex-wrap gap-2 mb-10">
-            {#each alphabet as letter}
                 <button
-                    onclick={() => (selectedLetter = letter)}
-                    class="px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer {selectedLetter ===
-                    letter
-                        ? 'bg-brand text-white'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800'}"
+                    type="button"
+                    onclick={(e) => handleEditOpen(e, sw)}
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-3 py-2 text-[13px] font-medium text-gray-300 transition hover:border-brand/25 hover:bg-brand/10 hover:text-brand touch-manipulation"
                 >
-                    {letter}
+                    <Pencil size={16} strokeWidth={2} />
+                    Edit
                 </button>
-            {/each}
-        </div>
-
-        <!-- Word list -->
-        <div
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-        >
-            {#each filteredWords ?? [] as item}
-                <div
-                    onclick={(e) => handleWordDetailModalOpen(e, item)}
-                    class="bg-[#12182b] border border-transparent hover:border-gray-700 rounded-xl p-5 relative group cursor-pointer transition-all duration-200 h-28 flex flex-col justify-between shadow-sm"
-                    role="button"
-                    tabindex="0"
-                    onkeydown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                            wordDetailModalOpen = true;
-                            selectedWord = item;
-                        }
-                    }}
+                <button
+                    type="button"
+                    onclick={(e) => openDeleteFromSheet(e)}
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 px-3 py-2 text-[13px] font-medium text-red-300/90 transition hover:bg-red-500/10 touch-manipulation"
                 >
-                    <div
-                        class="absolute top-4 right-4 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                    >
-                        <button
-                            onclick={(e) => toggleFavorite(e, item.id)}
-                            class="text-gray-400 hover:text-brand transition-colors cursor-pointer"
-                        >
-                            <Heart
-                                size={18}
-                                class={item.isFavorite
-                                    ? "fill-brand text-brand"
-                                    : ""}
-                            />
-                        </button>
-                        <button
-                            onclick={(e) => handleDeleteModalOpen(e, item)}
-                            class="text-gray-400 hover:text-gray-200 transition-colors cursor-pointer"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    </div>
-                    <!-- Show the word and the date the word was added to the vocabulary -->
-                    <div>
-                        <!-- Show the word -->
-                        <h3 class="text-lg font-bold text-gray-100">
-                            {item.word}
-                        </h3>
-                        <!-- Show the date the word was added to the vocabulary -->
-                        <p class="text-gray-500 text-xs mt-1">
-                            {item.createdAt.toLocaleDateString()}
-                        </p>
-                    </div>
-
-                    <!-- If item is marked favourite show the heart icon -->
-                    <div>
-                        {#if item.isFavorite}
-                            <Heart
-                                size={14}
-                                class="fill-brand text-brand"
-                            />
-                        {/if}
-                    </div>
-                </div>
-            {/each}
-        </div>
-
-        {#if filteredWords?.length === 0}
-            <div class="text-center py-20 text-gray-500">
-                <p>No words found matching your filters.</p>
+                    <Trash2 size={16} strokeWidth={2} />
+                    Delete
+                </button>
             </div>
-        {/if}
-    </div>
-</div>
 
-<!-- Delete modal -->
-<DeleteModal bind:open={deleteModalOpen} bind:word={selectedWord} />
-
-<!-- Word detail modal -->
-{#if wordDetailModalOpen}
-    <div
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        onclick={() => (selectedWord = null)}
-        role="button"
-        tabindex="0"
-        onkeydown={(e) =>
-            (e.key === "Enter" || e.key === " ") && (selectedWord = null)}
-    >
-        <div
-            class="bg-[#0f1423] border border-gray-800 rounded-2xl p-8 max-w-lg w-full relative shadow-2xl"
-            onclick={(e) => e.stopPropagation()}
-            role="button"
-            tabindex="0"
-            onkeydown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                    wordDetailModalOpen = false;
-                    selectedWord = null;
-                }
-            }}
-        >
-            <div    
-                onclick={(e) => {
-                    e.stopPropagation();
-                    console.log("Close modal");
-                    wordDetailModalOpen = false;
-                    selectedWord = null;
-                }}
-                class="absolute top-6 right-6 text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-full p-1 transition-colors cursor-pointer"
-                role="button"
-                tabindex="0"
-                onkeydown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                        wordDetailModalOpen = false;
-                        selectedWord = null;
-                    }
-                }}
+            <div
+                class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:pb-5"
             >
-                <X size={20} />
-            </div>
-
-            <div class="flex items-center gap-3 mb-8">
-                <h2 class="text-3xl font-bold text-white">
-                    {selectedWord?.word ?? ""}
-                </h2>
-            </div>
-
-            <div class="space-y-8">
-                {#each selectedWord?.meanings ?? [] as meaning}
-                    <div
-                        class="border border-gray-800 rounded-xl p-6 bg-[#0f1423]/40"
-                    >
-                        <!-- Meaning Type -->
-                        <div class="flex items-center justify-between mb-4">
+                <div class="space-y-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+                    {#each sw.meanings as meaning}
+                        <div
+                            class="rounded-xl border border-white/[0.06] bg-[var(--surface-2)] p-4"
+                        >
                             <span
-                                class="bg-[#1e293b] text-gray-300 text-xs px-3 py-1 rounded-full font-medium"
+                                class="inline-block rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-gray-400"
                             >
                                 {meaning.type}
                             </span>
-                        </div>
 
-                        <div class="space-y-5">
                             {#if meaning.dictionaryMeaning}
-                                <div>
-                                    <h4
-                                        class="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2"
+                                <div class="mt-3">
+                                    <h3
+                                        class="text-[11px] font-semibold uppercase tracking-wide text-gray-500"
                                     >
-                                        Dictionary Meaning
-                                    </h4>
-                                    <p class="text-gray-200 leading-relaxed">
+                                        Meaning
+                                    </h3>
+                                    <p class="mt-1.5 text-[14px] leading-relaxed text-gray-200">
                                         {meaning.dictionaryMeaning}
                                     </p>
                                 </div>
                             {/if}
 
                             {#if meaning.personalMeaning}
-                                <div>
-                                    <h4
-                                        class="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2"
-                                    >
-                                        Personal Meaning
-                                    </h4>
-                                    <p class="text-gray-200 leading-relaxed">
-                                        {meaning.personalMeaning}
-                                    </p>
-                                </div>
+                                {@const note = splitPersonalNote(
+                                    meaning.personalMeaning,
+                                )}
+                                {#if note.body}
+                                    <div class="mt-3">
+                                        <h3
+                                            class="text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                                        >
+                                            Your meaning
+                                        </h3>
+                                        <p class="mt-1.5 text-[14px] leading-relaxed text-gray-200">
+                                            {note.body}
+                                        </p>
+                                    </div>
+                                {/if}
+                                {#if note.mnemonic}
+                                    <div class="mt-3">
+                                        <h3
+                                            class="text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+                                        >
+                                            Your note / mnemonic
+                                        </h3>
+                                        <p class="mt-1.5 text-[14px] leading-relaxed text-gray-200">
+                                            {note.mnemonic}
+                                        </p>
+                                    </div>
+                                {/if}
                             {/if}
 
                             {#if meaning.examples?.length}
-                                <div>
-                                    <h4
-                                        class="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3"
+                                <div class="mt-3">
+                                    <h3
+                                        class="text-[11px] font-semibold uppercase tracking-wide text-gray-500"
                                     >
                                         Examples
-                                    </h4>
-
-                                    <div class="space-y-3">
+                                    </h3>
+                                    <ul class="mt-2 space-y-2">
                                         {#each meaning.examples as example}
-                                            <div
-                                                class="border-l-2 border-gray-700 pl-4 text-gray-300 italic"
+                                            <li
+                                                class="border-l-2 border-white/15 pl-3 text-[13px] text-gray-300"
                                             >
                                                 {#if example.dictionaryExample}
-                                                    <p>
+                                                    <p class="italic">
                                                         {example.dictionaryExample}
                                                     </p>
                                                 {/if}
-
                                                 {#if example.personalExample}
-                                                    <p
-                                                        class="text-gray-400 mt-1"
-                                                    >
+                                                    <p class="mt-1 not-italic text-gray-500">
                                                         {example.personalExample}
                                                     </p>
                                                 {/if}
-                                            </div>
+                                            </li>
                                         {/each}
-                                    </div>
+                                    </ul>
                                 </div>
                             {/if}
                         </div>
-                    </div>
-                {/each}
+                    {/each}
+                </div>
             </div>
         </div>
     </div>

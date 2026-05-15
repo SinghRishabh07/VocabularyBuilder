@@ -1,15 +1,14 @@
 <script lang="ts">
     import { Toaster } from "svelte-sonner";
-	import favicon from '$lib/assets/favicon.svg';
-	import "../app.css";
-	import {
+    import favicon from "$lib/assets/favicon.svg";
+    import "../app.css";
+    import {
         BookOpen,
-        LayoutDashboard,
+        Home,
         Library,
-        Trophy,
-        Info,
-        LogOut,
+        Plus,
         Bell,
+        User,
     } from "@lucide/svelte";
     import { browser } from "$app/environment";
     import { goto, invalidateAll } from "$app/navigation";
@@ -17,83 +16,81 @@
     import { page } from "$app/state";
     import type { PublicUser } from "$lib/types";
     import { dicebearAvatarUrl, imgReferrerPolicy } from "$lib/avatarUrl";
+    import AppBottomNav from "$lib/components/AppBottomNav.svelte";
 
     let currentPath = $derived(page.url.pathname);
-	let { data, children } = $props<{
-		data: {
-			user: PublicUser | null;
-			levelUp: { from: number; to: number } | null;
-		};
-	}>();
+    let { data, children } = $props<{
+        data: {
+            user: PublicUser | null;
+            levelUp: { from: number; to: number } | null;
+        };
+    }>();
 
-	$effect(() => {
-		if (!browser) return;
-		const lu = data.levelUp;
-		if (!lu) return;
-		const k = `vocab-lu-seen-${lu.from}-${lu.to}`;
-		if (sessionStorage.getItem(k)) return;
-		sessionStorage.setItem(k, "1");
-		void toast.success("Level up!", {
-			description: `You’re now level ${lu.to} (was level ${lu.from}).`,
-		});
-		void fetch("/api/user/dismiss-level-up", { method: "POST" }).then((r) => {
-			if (r.ok) {
-				return void invalidateAll();
-			}
-			sessionStorage.removeItem(k);
-		});
-	});
+    $effect(() => {
+        if (!browser) return;
+        const lu = data.levelUp;
+        if (!lu) return;
+        const k = `vocab-lu-seen-${lu.from}-${lu.to}`;
+        if (sessionStorage.getItem(k)) return;
+        sessionStorage.setItem(k, "1");
+        void toast.success("Level up!", {
+            description: `You're now level ${lu.to} (was level ${lu.from}).`,
+        });
+        void fetch("/api/user/dismiss-level-up", { method: "POST" }).then((r) => {
+            if (r.ok) {
+                return void invalidateAll();
+            }
+            sessionStorage.removeItem(k);
+        });
+    });
 
     let user = $derived(data.user);
     let navAvatarSrc = $derived(
-        user ? (user.image?.trim() ? user.image : dicebearAvatarUrl(user.email)) : ""
+        user ? (user.image?.trim() ? user.image : dicebearAvatarUrl(user.email)) : "",
     );
 
-    // --- FUNCTIONS --- Navigate to the vocabulary page
-    const handleMyCollectionClick = async() => {
-        goto("/vocabulary");
-    }
-    // --- FUNCTIONS --- Navigate to the dashboard page
-    const handleDashboardClick = async() => {
-        goto("/dashboard");
-    }
-    // --- FUNCTIONS --- Get the button class based on the current path and change the CSS accordingly
-    const getBtnClass = (path: string) => {
-        const base = "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer";
-        const active = "bg-brand/15 text-brand border border-brand/30 shadow-inner";
-        const inactive = "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 border border-transparent";
-        
-        return `${base} ${currentPath === path ? active : inactive}`;
+    let isLanding = $derived(currentPath === "/");
+    let showAppChrome = $derived(Boolean(user) && !isLanding);
+    /** Full-bleed auth-focused shell: no redundant top “Sign in” on the login screen */
+    let hidePublicChrome = $derived(isLanding && !user);
+
+    function topLinkClass(href: string) {
+        const active = currentPath === href;
+        const base =
+            "rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-200";
+        return active
+            ? `${base} text-brand bg-brand/10`
+            : `${base} text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]`;
     }
 
-    const handleAboutClick = () => {
-        goto("/about");
+    function logoHref() {
+        return user ? "/dashboard" : "/";
     }
-    const handleProfileClick = () => {
-        goto("/profile");
-    }
-    const handleProgressClick = () => {
-        goto("/progress");
-    }
-    const handleNotificationsClick = () => {
+
+    function handleNotificationsClick() {
         toast.info("Notifications", {
-            description: "Inbox coming soon. You'll see reminders and progress updates here.",
+            description:
+                "Inbox coming soon. You'll see reminders and progress updates here.",
         });
+    }
+
+    function goFocusSearch() {
+        void goto("/dashboard?focus=search");
     }
 </script>
 
 <Toaster
-	position="bottom-right"
-	richColors
-	closeButton
-	expand
-	gap={12}
-	offset={20}
-	duration={3500}
-	toastOptions={{
-		class: "bg-[#0f1423] border border-gray-800 text-gray-200 shadow-xl",
-		descriptionClass: "text-gray-400",
-	}}
+    position="top-center"
+    richColors
+    closeButton
+    expand
+    gap={12}
+    offset={16}
+    duration={3500}
+    toastOptions={{
+        class: "bg-[#0c1018] border border-white/10 text-gray-200 shadow-lg",
+        descriptionClass: "text-gray-400",
+    }}
 />
 
 <svelte:head>
@@ -101,103 +98,117 @@
     <title>VocabVault | Master Your Language</title>
 </svelte:head>
 
-	<nav
-        class="flex items-center justify-between px-6 py-4 bg-[#0d1120] border-b border-gray-800"
+{#if showAppChrome}
+    <header
+        class="sticky top-0 z-50 flex items-center justify-between gap-2 border-b border-white/[0.06] bg-[#070a10]/90 px-3 py-2 backdrop-blur-xl pt-[max(0.5rem,env(safe-area-inset-top))] lg:gap-3 lg:px-6 lg:py-2.5"
     >
-        <div class="flex items-center gap-2 cursor-pointer">
-            <div class="p-1.5 bg-brand/20 text-brand rounded-md">
-                <BookOpen size={20} strokeWidth={2.5} />
-            </div>
-            <span class="text-xl font-bold tracking-tight text-white">
-                Vocab<span class="text-brand">Vault</span>
-            </span>
-        </div>
+        <a
+            href={logoHref()}
+            class="flex shrink-0 items-center justify-center rounded-lg bg-brand/10 p-2 text-brand transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
+            aria-label={user ? "Go to home" : "VocabVault home"}
+        >
+            <BookOpen size={20} strokeWidth={2.25} aria-hidden="true" />
+        </a>
 
-        <div class="hidden md:flex items-center gap-2">
+        <nav
+            class="hidden lg:flex flex-1 items-center justify-center gap-0.5 min-w-0"
+            aria-label="Sections"
+        >
+            <a href="/dashboard" class={topLinkClass("/dashboard")}>
+                <span class="inline-flex items-center gap-1.5">
+                    <Home size={14} strokeWidth={2} aria-hidden="true" />
+                    Home
+                </span>
+            </a>
+            <a href="/vocabulary" class={topLinkClass("/vocabulary")}>
+                <span class="inline-flex items-center gap-1.5">
+                    <Library size={14} strokeWidth={2} aria-hidden="true" />
+                    Collection
+                </span>
+            </a>
             <button
-                class={getBtnClass('/dashboard')}
-                onclick={handleDashboardClick}
+                type="button"
+                onclick={goFocusSearch}
+                class={`${topLinkClass("")} inline-flex items-center gap-1.5 border-0 bg-transparent cursor-pointer font-[inherit]`}
             >
-                <LayoutDashboard size={18} />
-                Dashboard
+                <Plus size={14} strokeWidth={2} aria-hidden="true" />
+                Add Word
             </button>
             <button
-                class={getBtnClass('/vocabulary')}
-                onclick={handleMyCollectionClick}
+                type="button"
+                onclick={handleNotificationsClick}
+                class={`${topLinkClass("")} inline-flex items-center gap-1.5 border-0 bg-transparent cursor-pointer font-[inherit]`}
+                aria-label="Notifications (coming soon)"
             >
-                <Library size={18} />
-                My Collection
+                <Bell size={14} strokeWidth={2} aria-hidden="true" />
+                Notifications
             </button>
-            <button
-                class={getBtnClass("/progress")}
-                onclick={handleProgressClick}
+            <a href="/profile" class={topLinkClass("/profile")}>
+                <span class="inline-flex items-center gap-1.5">
+                    <User size={14} strokeWidth={2} aria-hidden="true" />
+                    Profile
+                </span>
+            </a>
+        </nav>
+
+        <a
+            href="/profile"
+            class="hidden lg:flex shrink-0 items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
+            aria-label="Open profile"
+        >
+            <img
+                src={navAvatarSrc}
+                alt=""
+                width={34}
+                height={34}
+                referrerpolicy={imgReferrerPolicy}
+                class="h-[34px] w-[34px] rounded-full border border-white/10 object-cover"
+                loading="eager"
+                decoding="async"
+            />
+        </a>
+    </header>
+{:else if !hidePublicChrome}
+    <header
+        class="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-white/[0.06] bg-[#070a10]/90 px-4 py-2.5 backdrop-blur-xl pt-[max(0.625rem,env(safe-area-inset-top))]"
+    >
+        <a
+            href="/"
+            class="flex shrink-0 items-center justify-center rounded-lg bg-brand/10 p-2 text-brand transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
+            aria-label="VocabVault home"
+        >
+            <BookOpen size={20} strokeWidth={2.25} aria-hidden="true" />
+        </a>
+        {#if !user}
+            <a
+                href="/api/auth/google"
+                class="text-[13px] font-medium text-brand hover:text-brand-bright transition-colors"
             >
-                <Trophy size={18} />
-                Progress
-            </button>
-            <button
-                class={getBtnClass('/about')}
-                onclick={handleAboutClick}
+                Sign in
+            </a>
+        {:else}
+            <a
+                href="/dashboard"
+                class="text-[13px] font-medium text-brand hover:text-brand-bright transition-colors"
             >
-                <Info size={18} />
-            </button>
-        </div>
+                Open app
+            </a>
+        {/if}
+    </header>
+{/if}
 
-        <div class="flex items-center gap-2 sm:gap-3">
-            {#if user}
-                <button
-                    type="button"
-                    onclick={handleNotificationsClick}
-                    class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
-                    title="Notifications"
-                    aria-label="Open notifications (coming soon)"
-                >
-                    <Bell size={20} strokeWidth={2} />
-                </button>
-                <button
-                    type="button"
-                    onclick={handleProfileClick}
-                    class="shrink-0 rounded-full border border-gray-700 bg-slate-800 overflow-hidden cursor-pointer p-0 leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
-                    title="Profile"
-                >
-                    <img
-                        src={navAvatarSrc}
-                        alt=""
-                        width={40}
-                        height={40}
-                        referrerpolicy={imgReferrerPolicy}
-                        class="w-10 h-10 object-cover block"
-                        loading="eager"
-                        decoding="async"
-                    />
-                </button>
-                <form method="POST" action="/api/auth/logout">
-                    <button
-                        type="submit"
-                        class="flex items-center gap-1.5 rounded-lg border border-gray-700 px-3 py-2 text-xs font-medium text-gray-300 hover:border-gray-500 hover:bg-gray-800/50 transition-colors cursor-pointer"
-                        title="Sign out"
-                    >
-                        <LogOut size={16} />
-                        <span class="hidden sm:inline">Sign out</span>
-                    </button>
-                </form>
-            {:else}
-                <img
-                    src={dicebearAvatarUrl("guest")}
-                    alt=""
-                    width={40}
-                    height={40}
-                    referrerpolicy={imgReferrerPolicy}
-                    class="w-10 h-10 rounded-full border border-gray-700 object-cover opacity-60 block bg-slate-800"
-                    loading="lazy"
-                    decoding="async"
-                />
-            {/if}
-        </div>
-    </nav>
+<div
+    class={`${hidePublicChrome ? "min-h-dvh" : "min-h-[calc(100dvh-3.25rem)]"} ${showAppChrome ? "pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0" : ""}`}
+>
+    {@render children()}
+</div>
 
-{@render children()}
+{#if showAppChrome}
+    <AppBottomNav />
+{/if}
 
-<footer class="text-center text-gray-500 text-sm bg-[#0d1120] border-b border-gray-800 py-4">
-    © 2026 VocabVault. Built with care for language lovers ❤️
-</footer>
+{#if !showAppChrome && !hidePublicChrome}
+    <footer class="border-t border-white/[0.06] bg-[#070a10] py-4 text-center text-[13px] text-gray-500">
+        © 2026 VocabVault. Built with care for language lovers.
+    </footer>
+{/if}

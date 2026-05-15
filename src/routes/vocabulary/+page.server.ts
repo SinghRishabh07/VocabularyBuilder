@@ -25,10 +25,12 @@ export const load: PageServerLoad = async ({ locals }) => {
         createdAt: w.createdAt,
         isFavorite: w.isFavorite ?? false,
         meanings: w.meanings.map((m) => ({
+            id: m.id,
             dictionaryMeaning: m.dictionaryMeaning ?? "",
             type: m.type,
             personalMeaning: m.personalMeaning,
             examples: m.examples.map((e) => ({
+                id: e.id,
                 dictionaryExample: e.dictionaryExample,
                 personalExample: e.personalExample,
             })),

@@ -6,4 +6,53 @@
 	--color-brand-bright: #d9b0ff;
 	--color-brand-deep: #9d4edd;
 	--color-brand-darker: #7b2cbf;
+
+	--font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+		"Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Mobile-first surfaces — flatter, less decorative */
+:root {
+	--surface-0: #070a10;
+	--surface-1: #0c1018;
+	--surface-2: #121722;
+	--border-subtle: rgba(255, 255, 255, 0.06);
+}
+
+html {
+	-webkit-tap-highlight-color: transparent;
+}
+
+body {
+	margin: 0;
+	background: var(--surface-0);
+	color: #e5e7eb;
+}
+
+@keyframes sheet-enter {
+	from {
+		transform: translateY(100%);
+		opacity: 0.96;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+.animate-sheet-enter {
+	animation: sheet-enter 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@keyframes backdrop-fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.animate-backdrop-in {
+	animation: backdrop-fade-in 0.2s ease-out forwards;
 }
