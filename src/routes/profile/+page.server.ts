@@ -57,11 +57,19 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const level = getVocabularyLevelInfo(totalWords);
 
+	const favoriteWords = await prisma.word.count({
+		where: { userId: locals.user.id, isFavorite: true },
+	});
+
 	const profile: ProfileStats = {
 		totalWords,
 		streakDays,
 		weeklyProgressPercent,
 		level,
+		weeklyWordsAdded: weeklyWords,
+		weeklyTarget,
+		dailyWordGoal: goal,
+		favoriteWords,
 	};
 
 	return { profile };
