@@ -32,8 +32,9 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  sessions Session[]
-  words    Word[]
+  sessions       Session[]
+  words          Word[]
+  reviewSessions ReviewSession[]
 }
 
 model Session {
@@ -58,7 +59,39 @@ model Word {
 
   meanings Meaning[]
 
+  // ── Revision / spaced repetition (simplified SM-2) ──
+  /// Ease multiplier applied to the interval after a successful recall (min 1.3)
+  reviewEase     Float     @default(2.5)
+  /// Current interval in days between reviews
+  reviewInterval Int       @default(0)
+  /// When the word is next due for revision (new words are due immediately)
+  reviewDueAt    DateTime  @default(now())
+  lastReviewedAt DateTime?
+  /// Total graded answers / correct answers / times forgotten
+  reviewCount    Int       @default(0)
+  correctCount   Int       @default(0)
+  lapseCount     Int       @default(0)
+
   @@unique([userId, word])
+  @@index([userId, reviewDueAt])
+}
+
+/// One revision session. Answers are recorded as they happen, so progress
+/// survives the user leaving mid-session.
+model ReviewSession {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode            String    @default("smart")
+  plannedCount    Int
+  answeredCount   Int       @default(0)
+  correctCount    Int       @default(0)
+  /// Word ids already graded in this session (makes answer submission idempotent)
+  answeredWordIds String[]  @default([])
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  @@index([userId, startedAt])
 }
 
 model Meaning {

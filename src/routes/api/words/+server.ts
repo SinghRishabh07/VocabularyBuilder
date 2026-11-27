@@ -1,89 +1,50 @@
-import { prisma } from "$lib/prisma";
 import { json } from "@sveltejs/kit";
-import { getVocabularyLevelInfo } from "$lib/server/vocabularyLevel";
-import type { AddWordPayload } from "$lib/types";
+import { MAX_BATCH, saveWordsForUser } from "$lib/server/words";
 import type { RequestHandler } from "./$types";
 
-const VALID_POS = ["noun", "verb", "adjective", "adverb"] as const;
-
-function toPartOfSpeech(pos: string): "noun" | "verb" | "adjective" | "adverb" {
-	const normalized = pos?.toLowerCase();
-	return VALID_POS.includes(normalized as (typeof VALID_POS)[number])
-		? (normalized as (typeof VALID_POS)[number])
-		: "noun";
-}
-
+/**
+ * Add words to the current user's vocabulary.
+ *
+ * - `{ word, meanings }` → single add (dashboard lookup). 409 if it already exists.
+ * - `{ words: [{ word, meanings }, …] }` → batch add (paragraph analyzer).
+ *   Existing words are reported in `skipped` instead of failing the batch.
+ */
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) {
 		return json({ error: "Unauthorized" }, { status: 401 });
 	}
 
+	let body: unknown;
 	try {
-		const body = (await request.json()) as AddWordPayload;
-		const { word: wordText, meanings } = body;
+		body = await request.json();
+	} catch {
+		return json({ error: "Invalid JSON" }, { status: 400 });
+	}
 
-		if (!wordText || !Array.isArray(meanings)) {
+	const batch = (body as { words?: unknown })?.words;
+	const isBatch = Array.isArray(batch);
+	const payloads = isBatch ? (batch as unknown[]) : [body];
+
+	if (payloads.length === 0) {
+		return json({ error: "No words to save" }, { status: 400 });
+	}
+	if (payloads.length > MAX_BATCH) {
+		return json({ error: `You can save up to ${MAX_BATCH} words at once` }, { status: 400 });
+	}
+
+	try {
+		const result = await saveWordsForUser(locals.user.id, payloads);
+
+		if (isBatch) return json(result);
+
+		if (result.invalid.length) {
 			return json({ error: "word and meanings are required" }, { status: 400 });
 		}
-
-		const normalizedWord = wordText.toLowerCase().trim();
-
-		const totalBefore = await prisma.word.count({
-			where: { userId: locals.user.id },
-		});
-		const beforeLevel = getVocabularyLevelInfo(totalBefore);
-
-		const word = await prisma.word.create({
-			data: {
-				word: normalizedWord,
-				userId: locals.user.id,
-				meanings: {
-					create: meanings.map((m: AddWordPayload["meanings"][number]) => ({
-						type: toPartOfSpeech(m.pos ?? ""),
-						dictionaryMeaning: Array.isArray(m.definitions) ? m.definitions[0] ?? null : null,
-						personalMeaning: m.personalMeaning || null,
-						examples: {
-							create: m.personalExample
-								? [{ personalExample: m.personalExample, dictionaryExample: null }]
-								: [],
-						},
-					})),
-				},
-			},
-			include: {
-				meanings: {
-					include: {
-						examples: true,
-					},
-				},
-			},
-		});
-
-		const afterLevel = getVocabularyLevelInfo(totalBefore + 1);
-		if (afterLevel.level > beforeLevel.level) {
-			await prisma.user.update({
-				where: { id: locals.user.id },
-				data: {
-					levelUpFrom: beforeLevel.level,
-					levelUpTo: afterLevel.level,
-					streakRemindYmd: null,
-				},
-			});
-		} else {
-			// New word today: reset so the streak-risk cron can run again on a later day
-			// and no duplicate “nudge” is implied for a day the user has already been active
-			await prisma.user.update({
-				where: { id: locals.user.id },
-				data: { streakRemindYmd: null },
-			});
-		}
-
-		return json(word);
-	} catch (err: unknown) {
-		const anyErr = err as { code?: string };
-		if (anyErr?.code === "P2002") {
+		if (result.skipped.length) {
 			return json({ error: "Word already exists in vocabulary" }, { status: 409 });
 		}
+		return json(result.created[0]);
+	} catch (err) {
 		console.error("POST /api/words:", err);
 		return json({ error: "Failed to save word" }, { status: 500 });
 	}

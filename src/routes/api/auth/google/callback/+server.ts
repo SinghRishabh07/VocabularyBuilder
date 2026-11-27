@@ -65,26 +65,44 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	});
 
 	let user: { id: string };
-	if (existing) {
-		user = await prisma.user.update({
-			where: { id: existing.id },
-			data: { email, name, image },
+	try {
+		if (existing) {
+			user = await prisma.user.update({
+				where: { id: existing.id },
+				data: { email, name, image },
+				select: { id: true },
+			});
+		} else {
+			const created = await prisma.user.create({
+				data: {
+					googleId: profile.id,
+					email,
+					name,
+					image,
+				},
+				select: { id: true, email: true, name: true },
+			});
+			user = { id: created.id };
+			const displayName =
+				created.name?.trim() || created.email.split("@")[0] || "there";
+			// Only on first sign-up. Not awaited so login isn't slowed down; the
+			// helper never rejects and logs its own failures. The idempotency key
+			// (welcome/<userId>) guarantees at most one welcome email per user.
+			void sendWelcomeEmail({ userId: created.id, email: created.email, displayName });
+		}
+	} catch (err) {
+		// Two callbacks for the same new account raced (double-click / retry):
+		// the other request created the user — reuse it, no second welcome email.
+		if ((err as { code?: string })?.code !== "P2002") throw err;
+		const raced = await prisma.user.findUnique({
+			where: { googleId: profile.id },
 			select: { id: true },
 		});
-	} else {
-		const created = await prisma.user.create({
-			data: {
-				googleId: profile.id,
-				email,
-				name,
-				image,
-			},
-			select: { id: true, email: true, name: true },
-		});
-		user = { id: created.id };
-		const displayName =
-			created.name?.trim() || created.email.split("@")[0] || "there";
-		sendWelcomeEmail({ email: created.email, displayName });
+		if (!raced) {
+			console.error("Google sign-in: email already linked to another account");
+			throw redirect(302, "/?error=oauth_account_conflict");
+		}
+		user = raced;
 	}
 
 	const token = await createSession(user.id);

@@ -5,8 +5,8 @@ import {
 	SESSION_COOKIE
 } from "$lib/server/auth";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/vocabulary", "/profile"];
-const PROTECTED_API_PREFIXES = ["/api/words", "/api/search"];
+const PROTECTED_PREFIXES = ["/dashboard", "/vocabulary", "/profile", "/progress", "/analyze", "/revise"];
+const PROTECTED_API_PREFIXES = ["/api/words", "/api/search", "/api/analyze", "/api/review", "/api/user"];
 
 function isProtectedPath(pathname: string): boolean {
 	if (PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {

@@ -1,8 +1,7 @@
 <script lang="ts">
-    import { Home, Library, Plus, Bell, User } from "@lucide/svelte";
+    import { Home, Library, Plus, Brain, User } from "@lucide/svelte";
     import { goto } from "$app/navigation";
     import { page } from "$app/state";
-    import { toast } from "svelte-sonner";
 
     let path = $derived(page.url.pathname);
 
@@ -12,6 +11,10 @@
 
     function isCollection() {
         return path === "/vocabulary";
+    }
+
+    function isRevise() {
+        return path === "/revise";
     }
 
     function isProfile() {
@@ -44,11 +47,8 @@
         void goto("/dashboard?focus=search");
     }
 
-    function openNotifications() {
-        toast.info("Notifications", {
-            description:
-                "Inbox coming soon. You'll see reminders and progress updates here.",
-        });
+    function goRevise() {
+        void goto("/revise");
     }
 
     function goProfile() {
@@ -93,12 +93,12 @@
 
         <button
             type="button"
-            onclick={openNotifications}
-            class={navItemClass(false)}
-            aria-label="Notifications (coming soon)"
+            onclick={goRevise}
+            class={navItemClass(isRevise())}
+            aria-current={isRevise() ? "page" : undefined}
         >
-            <Bell size={22} strokeWidth={2} aria-hidden="true" />
-            <span class={labelClass(false)}>Notify</span>
+            <Brain size={22} strokeWidth={isRevise() ? 2.25 : 2} aria-hidden="true" />
+            <span class={labelClass(isRevise())}>Revise</span>
         </button>
 
         <button
