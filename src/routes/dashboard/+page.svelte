@@ -9,6 +9,9 @@
         Plus,
         BookOpen,
         X,
+        ScanText,
+        Brain,
+        ChevronRight,
     } from "@lucide/svelte";
     import type {
         SearchResult,
@@ -34,7 +37,9 @@
         }[];
     };
 
-    let { data } = $props<{ data: { recentWords: DashboardRecent[] } }>();
+    let { data } = $props<{
+        data: { recentWords: DashboardRecent[]; readyToRevise: number };
+    }>();
 
     let searchQuery = $state("");
     let searchInput: HTMLInputElement | null = $state(null);
@@ -138,6 +143,11 @@
                     definitions: m.definitions
                         .slice(0, 2)
                         .map((d) => d.definition),
+                    // Saved with the word — used for fill-in-the-blank revision
+                    examples: m.definitions
+                        .map((d) => d.example)
+                        .filter((e): e is string => Boolean(e))
+                        .slice(0, 1),
                 })),
             };
             isInVocab = false;
@@ -168,6 +178,7 @@
             meanings: searchResult.allMeanings.map((m) => ({
                 pos: m.pos,
                 definitions: m.definitions,
+                examples: m.examples,
             })),
         };
 
@@ -365,6 +376,45 @@
                     </div>
                 </div>
             {/if}
+        </div>
+
+        <div class="mt-6 grid grid-cols-2 gap-2.5">
+            <a
+                href="/analyze"
+                class="group flex min-h-[4.5rem] flex-col justify-between rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 transition-colors hover:border-brand/25 hover:bg-brand/[0.06] touch-manipulation"
+            >
+                <span class="flex items-center justify-between">
+                    <ScanText size={18} class="text-brand" strokeWidth={2} aria-hidden="true" />
+                    <ChevronRight size={16} class="text-gray-600 transition group-hover:text-gray-400" aria-hidden="true" />
+                </span>
+                <span>
+                    <span class="block text-[14px] font-semibold text-gray-100">Analyze text</span>
+                    <span class="block text-[12px] text-gray-500">Find words in a paragraph</span>
+                </span>
+            </a>
+            <a
+                href="/revise"
+                class="group flex min-h-[4.5rem] flex-col justify-between rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 transition-colors hover:border-brand/25 hover:bg-brand/[0.06] touch-manipulation"
+            >
+                <span class="flex items-center justify-between">
+                    <Brain size={18} class="text-brand" strokeWidth={2} aria-hidden="true" />
+                    {#if data.readyToRevise > 0}
+                        <span class="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-brand">
+                            {data.readyToRevise}
+                        </span>
+                    {:else}
+                        <ChevronRight size={16} class="text-gray-600 transition group-hover:text-gray-400" aria-hidden="true" />
+                    {/if}
+                </span>
+                <span>
+                    <span class="block text-[14px] font-semibold text-gray-100">Revise</span>
+                    <span class="block text-[12px] text-gray-500">
+                        {data.readyToRevise > 0
+                            ? `${data.readyToRevise} ${data.readyToRevise === 1 ? "word" : "words"} ready`
+                            : "Quiz & flashcards"}
+                    </span>
+                </span>
+            </a>
         </div>
 
         <section class="mt-8 md:mt-9">

@@ -7,8 +7,9 @@
         Home,
         Library,
         Plus,
-        Bell,
         User,
+        ScanText,
+        Brain,
     } from "@lucide/svelte";
     import { browser } from "$app/environment";
     import { goto, invalidateAll } from "$app/navigation";
@@ -65,13 +66,6 @@
 
     function logoHref() {
         return user ? "/dashboard" : "/";
-    }
-
-    function handleNotificationsClick() {
-        toast.info("Notifications", {
-            description:
-                "Inbox coming soon. You'll see reminders and progress updates here.",
-        });
     }
 
     function goFocusSearch() {
@@ -134,15 +128,18 @@
                 <Plus size={14} strokeWidth={2} aria-hidden="true" />
                 Add Word
             </button>
-            <button
-                type="button"
-                onclick={handleNotificationsClick}
-                class={`${topLinkClass("")} inline-flex items-center gap-1.5 border-0 bg-transparent cursor-pointer font-[inherit]`}
-                aria-label="Notifications (coming soon)"
-            >
-                <Bell size={14} strokeWidth={2} aria-hidden="true" />
-                Notifications
-            </button>
+            <a href="/analyze" class={topLinkClass("/analyze")}>
+                <span class="inline-flex items-center gap-1.5">
+                    <ScanText size={14} strokeWidth={2} aria-hidden="true" />
+                    Analyze
+                </span>
+            </a>
+            <a href="/revise" class={topLinkClass("/revise")}>
+                <span class="inline-flex items-center gap-1.5">
+                    <Brain size={14} strokeWidth={2} aria-hidden="true" />
+                    Revise
+                </span>
+            </a>
             <a href="/profile" class={topLinkClass("/profile")}>
                 <span class="inline-flex items-center gap-1.5">
                     <User size={14} strokeWidth={2} aria-hidden="true" />
